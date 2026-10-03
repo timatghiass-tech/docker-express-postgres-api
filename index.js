@@ -2,76 +2,108 @@ const express = require('express');
 const { Pool } = require('pg');
 
 const app = express();
-app.use(express.json()); // Permite ler o corpo das requisições em formato JSON
+app.use(express.json());
 
-// Ligação à base de dados PostgreSQL
+// Configuração do pool de conexões com variáveis de ambiente
 const pool = new Pool({
-  host: 'localhost',
-  port: 5432,
-  user: 'postgres',
-  password: 'Shadowrun1!',
-  database: 'postgres',
+  host: process.env.DB_HOST || 'localhost',
+  user: process.env.DB_USER || 'postgres',
+  password: process.env.DB_PASSWORD || 'postgres',
+  database: process.env.DB_NAME || 'automacao_produtos',
+  port: Number(process.env.DB_PORT) || 5432,
 });
 
-// 1. LISTAR TODOS OS PRODUTOS (GET)
+// Cria a tabela automaticamente caso ela ainda não exista no banco
+const initDb = async () => {
+  const query = `
+    CREATE TABLE IF NOT EXISTS products (
+      id SERIAL PRIMARY KEY,
+      name VARCHAR(255) NOT NULL,
+      price NUMERIC(10, 2) NOT NULL
+    );
+  `;
+  try {
+    await pool.query(query);
+    console.log('Tabela "products" verificada/criada com sucesso.');
+  } catch (err) {
+    console.error('Erro ao inicializar o banco de dados:', err.message);
+  }
+};
+
+initDb();
+
+// Rota GET: Listar todos os produtos
 app.get('/products', async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM scraped_products ORDER BY id ASC');
-    res.json(result.rows);
+    const result = await pool.query('SELECT * FROM products ORDER BY id ASC');
+    res.status(200).json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// 2. INSERIR NOVO PRODUTO (POST)
+// Rota POST: Inserir novo produto
 app.post('/products', async (req, res) => {
+  const { name, price } = req.body;
+  if (!name || price === undefined) {
+    return res.status(400).json({ error: 'Os campos name e price são obrigatórios.' });
+  }
+
   try {
-    const { name, price } = req.body;
-    const query = 'INSERT INTO scraped_products (name, price) VALUES ($1, $2) RETURNING *';
-    const result = await pool.query(query, [name, price]);
+    const result = await pool.query(
+      'INSERT INTO products (name, price) VALUES ($1, $2) RETURNING *',
+      [name, price]
+    );
     res.status(201).json(result.rows[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// 3. APAGAR UM PRODUTO PELO ID (DELETE)
-app.delete('/products/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const result = await pool.query('DELETE FROM scraped_products WHERE id = $1 RETURNING *', [id]);
-
-    if (result.rowCount === 0) {
-      return res.status(404).json({ error: 'Produto não encontrado' });
-    }
-
-    res.json({ message: 'Produto removido com sucesso', deleted: result.rows[0] });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// 4. ATUALIZAR PREÇO DE UM PRODUTO PELO ID (PUT)
+// Rota PUT: Atualizar produto por ID
 app.put('/products/:id', async (req, res) => {
+  const { id } = req.params;
+  const { name, price } = req.body;
+
   try {
-    const { id } = req.params;
-    const { price } = req.body;
     const result = await pool.query(
-      'UPDATE scraped_products SET price = $1 WHERE id = $2 RETURNING *',
-      [price, id]
+      `UPDATE products 
+       SET name = COALESCE($1, name), 
+           price = COALESCE($2, price) 
+       WHERE id = $3 
+       RETURNING *`,
+      [name, price, id]
     );
 
     if (result.rowCount === 0) {
       return res.status(404).json({ error: 'Produto não encontrado' });
     }
 
-    res.json(result.rows[0]);
+    res.status(200).json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Rota DELETE: Remover produto por ID
+app.delete('/products/:id', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const result = await pool.query('DELETE FROM products WHERE id = $1 RETURNING *', [id]);
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Produto não encontrado' });
+    }
+
+    res.status(200).json({ message: 'Produto removido com sucesso' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
 // Inicia o servidor
-app.listen(3000, () => {
-  console.log('Servidor rodando em http://localhost:3000');
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Servidor rodando em http://localhost:${PORT}`);
 });
