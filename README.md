@@ -1,28 +1,37 @@
-# 🛒 Product Management REST API
+# Containerized Products Management API
 
-API REST desenvolvida em Node.js e Express integrada com banco de dados relacional PostgreSQL para gerenciamento completo (CRUD) de produtos.
+A RESTful API built with **Node.js**, **Express**, and **PostgreSQL**, fully containerized and orchestrated using **Docker** and **Docker Compose**.
 
-## 🚀 Tecnologias Utilizadas
+---
 
-- **Node.js**: Ambiente de execução JavaScript no servidor
-- **Express**: Framework web minimalista para construção das rotas da API
-- **PostgreSQL**: Banco de dados relacional para persistência dos dados
-- **node-postgres (pg)**: Driver oficial do PostgreSQL com Connection Pool
-- **Postman**: Validação, requisições HTTP e testes de endpoints
-- **DBeaver**: Administração e inspeção visual do banco de dados
+## 🛠 Tech Stack
 
-## 📌 Rotas da API (Endpoints)
+- **Node.js** & **Express** - Backend framework & routing
+- **PostgreSQL 15** - Relational database
+- **pg (node-postgres)** - PostgreSQL client with connection pooling
+- **Docker** & **Docker Compose** - Multi-container architecture and orchestration
 
-| Método | Rota | Descrição | Status de Sucesso |
-|---|---|---|---|
-| `GET` | `/products` | Lista todos os produtos cadastrados | `200 OK` |
-| `POST` | `/products` | Insere um novo produto | `201 Created` |
-| `PUT` | `/products/:id` | Atualiza o preço de um produto existente | `200 OK` |
-| `DELETE` | `/products/:id` | Remove um produto do banco pelo ID | `200 OK` |
+---
 
-### Exemplo de Payload (POST):
-```json
-{
-  "name": "Headset Gamer 7.1",
-  "price": 279.90
-}
+## 🚀 Architecture
+
+The application runs using two isolated Docker services connected via a shared internal bridge network:
+
+1. **`app`**: The Node.js application container (exposed on port `3000`).
+2. **`db`**: The PostgreSQL database container (persisted via a named Docker volume `pgdata` on port `5432`).
+
+---
+
+## ⚙️ Getting Started
+
+### Prerequisites
+
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running.
+- [Git](https://git-scm.com/) installed.
+
+### Running the Application
+
+1. Clone the repository:
+   ```bash
+   git clone [https://github.com/timatghiass-tech/docker-express-postgres-api.git](https://github.com/timatghiass-tech/docker-express-postgres-api.git)
+   cd docker-express-postgres-api
